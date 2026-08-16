@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>劈尖干涉光学仿真系统</title>
+    <style>
+        :root {
+            --bg-main: #060a12;
+            --bg-panel: #0c1220;
+            --bg-card: #10182b;
+            --bg-input: #0a0f1c;
+            --tech-cyan: #00e5ff;
+            --tech-cyan-light: #7ef0ff;
+            --tech-blue: #0088ff;
+            --tech-blue-light: #63b8ff;
+            --tech-red: #ff3a4c;
+            --tech-yellow: #ffdd55;
+            --tech-green: #3dff9a;
+            --text-main: #f8fbff;
+            --text-sub: #c4d4f0;
+            --text-faint: #8096b8;
+            --border-normal: #1c2a48;
+            --border-glow: rgba(0, 229, 255, 0.35);
+            --glow-soft: 0 0 18px rgba(0, 229, 255, 0.15);
+            --radius-md: 12px;
+            --radius-lg: 20px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; background: var(--bg-main); color: var(--text-sub); overflow: hidden; }
+        .page-wrap {
+            width: 100%; height: 100%; padding: 20px;
+            border: 1px solid var(--border-glow); box-shadow: var(--glow-soft);
+            border-radius: var(--radius-lg); display: flex; flex-direction: column;
+        }
+        .main-title {
+            text-align: center; font-size: 32px; font-weight: 600; margin-bottom: 14px;
+            background: linear-gradient(90deg, var(--tech-blue-light), var(--tech-cyan-light));
+            -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 1px; flex-shrink: 0;
+        }
+        .wrap {
+            width: 100%; flex: 1; display: grid; grid-template-columns: 1fr 420px; gap: 18px; min-height: 0;
+        }
+        .canvas-box {
+            background: var(--bg-panel); border-radius: var(--radius-lg);
+            border: 1px solid var(--border-glow); box-shadow: var(--glow-soft);
+            padding: 14px; display: flex; flex-direction: column; gap: 12px;
+            height: 100%; min-height: 0; overflow-y: auto;
+            scrollbar-width: thin; scrollbar-color: var(--tech-cyan) var(--bg-input);
+        }
+        .canvas-box::-webkit-scrollbar { width: 5px; }
+        .canvas-box::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 3px; }
+        .canvas-box::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--tech-cyan), var(--tech-blue)); border-radius: 3px; }
+        .canvas-card { background: var(--bg-card); border-radius: var(--radius-md); padding: 16px; position: relative; border: 1px solid var(--border-normal); }
+        .canvas-card h4 { position: absolute; top: 10px; left: 12px; color: var(--text-main); font-size: 15px; font-weight: 500; z-index: 2; background: rgba(8,12,22,0.8); padding: 4px 10px; border-radius: 6px; backdrop-filter: blur(4px); margin: 0; }
+        canvas { width: 100%; height: 100%; display: block; border-radius: 6px; background: #080c14; }
+        .model-3d-wrap {
+            position: relative; height: 480px;
+            background: var(--bg-card); border-radius: var(--radius-md);
+            border: 1px solid var(--border-normal); overflow: hidden;
+            cursor: grab; flex-shrink: 0;
+        }
+        .model-3d-wrap:active { cursor: grabbing; }
+        #model3DCanvas { width: 100%; height: 100%; background: radial-gradient(ellipse at center, #0f1830 0%, #050810 100%); }
+        .wave-diagram {
+            position: absolute; top: 12px; left: 12px;
+            width: 270px; height: 155px;
+            background: rgba(5,8,16,0.92); border: 1px solid var(--border-normal);
+            border-radius: 8px; backdrop-filter: blur(6px);
+            z-index: 3; padding: 4px 8px; display: flex; flex-direction: column;
+        }
+        .wave-diagram .diagram-title { font-size: 12px; color: var(--text-main); font-weight: 500; text-align: center; margin-bottom: 2px; flex-shrink: 0; }
+        .wave-diagram canvas { width: 100%; height: 120px; background: transparent; }
+        .rotate-tip { position: absolute; bottom: 12px; right: 12px; font-size: 12px; color: var(--text-faint); background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px; z-index: 2; }
+        .view-btn-group { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+        .view-btn-group button { flex: 1; min-width: 100px; }
+        .normal-views { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; flex-shrink: 0; }
+        .defect-view { display: none; width: 100%; max-width: 640px; margin: 0 auto; flex-shrink: 0; }
+        .defect-view.active { display: block; }
+        .view-card { flex: 1; min-width: 280px; max-width: 400px; height: 210px; display: none; }
+        .view-card.active { display: block; }
+
+        .control {
+            background: var(--bg-panel); border-radius: var(--radius-lg);
+            border: 1px solid var(--border-glow); box-shadow: var(--glow-soft);
+            padding: 22px; height: 100%; min-height: 0; overflow-y: auto;
+            scrollbar-width: thin; scrollbar-color: var(--tech-cyan) var(--bg-input);
+            font-size: 16px;
+        }
+        .control::-webkit-scrollbar { width: 5px; }
+        .control::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 3px; }
+        .control::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--tech-cyan), var(--tech-blue)); border-radius: 3px; }
+        .control h2 { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-normal); color: var(--text-main); font-size: 24px; font-weight: 600; }
+        .n-fixed-badge { display: inline-block; background: var(--tech-cyan); color: #000; font-weight: 700; padding: 3px 12px; border-radius: 12px; font-size: 15px; margin-left: 10px; vertical-align: middle; }
+        .desc-single { font-size: 15px; color: var(--text-faint); line-height: 1.7; margin-bottom: 14px; }
+        .formula { background: linear-gradient(135deg, var(--bg-input), #0e1628); padding: 16px; border-left: 3px solid var(--tech-cyan); border-radius: 8px; text-align: center; font-size: 16px; margin: 12px 0 16px; color: var(--text-main); line-height: 2.0; }
+        .formula .main-formula { font-size: 23px; font-weight: 600; color: var(--tech-cyan-light); margin-bottom: 4px; }
+        .group { background: linear-gradient(135deg, var(--bg-card), #121c33); padding: 14px 16px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid var(--border-normal); }
+        .group-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; color: var(--text-main); font-size: 16px; }
+        .slider-wrap { width: 100%; margin: 6px 0; display: flex; flex-direction: column; gap: 5px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-sub); }
+        .slider-bar-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+        .slider-bar-row input[type=range] { flex: 1; height: 6px; accent-color: var(--tech-cyan); background: var(--bg-input); border-radius: 3px; outline: none; }
+        .input-unit-group { display: flex; gap: 4px; align-items: center; font-size: 14px; }
+        input[type=number] { width: 72px; background: var(--bg-input); border: 1px solid var(--border-normal); color: var(--text-main); padding: 5px; text-align: right; border-radius: 6px; font-size: 15px; }
+        input[type=number]:focus { outline: none; box-shadow: 0 0 8px rgba(0,229,255,0.35); border-color: var(--tech-cyan); }
+        input:disabled { opacity: 0.3; }
+        .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+        button { border: none; padding: 11px 0; border-radius: 6px; cursor: pointer; font-size: 16px; color: var(--text-faint); background: linear-gradient(135deg, var(--bg-input), #0d1424); flex: 1; border: 1px solid var(--border-normal); transition: all 0.18s ease; font-weight: 500; white-space: nowrap; }
+        button:hover { border-color: var(--tech-cyan); color: var(--text-main); box-shadow: 0 0 12px rgba(0,229,255,0.18); }
+        button.active { background: linear-gradient(135deg, #0058bb, #00d8ff); color: #000; font-weight: 600; }
+        .data-row { display: flex; gap: 10px; margin-top: 8px; }
+        .data-card { flex: 1; min-width: 0; background: var(--bg-input); border-radius: var(--radius-md); padding: 16px 6px; text-align: center; border: 1px solid var(--border-normal); }
+        .data-label { font-size: 13px; color: var(--text-faint); margin-bottom: 6px; white-space: nowrap; }
+        .data-value { font-size: clamp(20px, 4.5vw, 28px); color: var(--text-main); font-weight: 600; }
+        .check-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 14px; }
+        .check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--tech-cyan); }
+        .defect-result { margin-top: 10px; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); font-size: 14px; text-align: center; }
+        .speed-slider-wrap { margin: 14px 0 8px; }
+        .speed-label-row { display: flex; justify-content: space-between; margin-top: 4px; font-size: 14px; color: var(--text-faint); }
+        .auto-btn-row { display: flex; gap: 10px; margin-top: 14px; }
+        .auto-reset-btn { flex: 1; background: linear-gradient(135deg, #222838, #151c2e); color: var(--text-main); }
+        .auto-run-btn { flex: 1.2; background: linear-gradient(135deg, #0066dd, #00b8ff); color: #000; font-weight: 600; }
+        .auto-run-btn.pause { background: linear-gradient(135deg, #dd6600, #ffb800); }
+        .modal-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.78); z-index: 9999; display: none; align-items: center; justify-content: center; }
+        .modal-box { width: 860px; max-height: 85vh; background: var(--bg-panel); border: 1px solid var(--border-glow); border-radius: var(--radius-lg); box-shadow: var(--glow-soft); padding: 28px; overflow-y: auto; }
+        .modal-title { font-size: 26px; color: var(--text-main); text-align: center; padding-bottom: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-normal); font-weight: 600; }
+        .modal-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .modal-table th, .modal-table td { border: 1px solid var(--border-normal); padding: 12px; font-size: 16px; color: var(--text-sub); }
+        .modal-table th { background-color: var(--bg-card); color: var(--text-main); }
+        .modal-close-btn { width: 100%; margin-top: 20px; padding: 12px; background: linear-gradient(135deg, #182336, #0f1729); border: 1px solid var(--border-normal); color: var(--text-main); border-radius: 8px; cursor: pointer; font-size: 17px; }
+        .modal-close-btn:hover { border-color: var(--tech-cyan); }
+        .modal-section-title { color: var(--tech-cyan-light); font-size: 18px; font-weight: 600; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px dotted var(--border-normal); }
+        .app-tabs { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; border-bottom: 1px solid var(--border-normal); padding-bottom: 12px; }
+        .app-tab-btn { flex: 1; min-width: 100px; padding: 12px 6px; border-radius: 8px 8px 0 0; background: var(--bg-input); color: var(--text-faint); border: 1px solid var(--border-normal); border-bottom: none; font-size: 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .app-tab-btn.active { background: var(--bg-card); color: var(--tech-cyan-light); border-color: var(--tech-cyan); font-weight: 600; }
+        .app-content { display: none; animation: fadeIn 0.2s ease; line-height: 1.9; color: var(--text-sub); }
+        .app-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .app-text { font-size: 17px; margin: 12px 0; }
+        .app-highlight { color: var(--tech-yellow); font-weight: 600; }
+        .app-red { color: var(--tech-red); font-weight: 600; }
+        .app-cyan { color: var(--tech-cyan); font-weight: 600; }
+        @media (max-width: 900px) {
+            .wrap { grid-template-columns: 1fr; }
+            .page-wrap { padding: 10px; }
+            .main-title { font-size: 24px; }
+            .model-3d-wrap { height: 380px; }
+            .control { font-size: 15px; }
+            button { font-size: 15px; }
+            .app-text { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="page-wrap">
+    <h1 class="main-title">劈尖干涉光学仿真系统</h1>
+    <div class="wrap">
+        <div class="canvas-box">
+            <div class="model-3d-wrap" id="modelWrap">
+                <div class="wave-diagram">
+                    <div class="diagram-title">明暗条纹干涉说明</div>
+                    <canvas id="waveDiagramCanvas" width="250" height="115"></canvas>
+                </div>
+                <canvas id="model3DCanvas" width="700" height="480"></canvas>
+                <div class="rotate-tip"> 按住鼠标拖动可360°旋转查看</div>
+            </div>
+            <div class="view-btn-group">
+                <button class="active" id="btnFringe" onclick="toggleView('fringe')">干涉条纹</button>
+                <button id="btnSection" onclick="toggleView('section')">截面示意图</button>
+                <button id="btnDefect" onclick="toggleView('defect')">平整度检测</button>
+            </div>
+            <div class="normal-views" id="normalViews">
+                <div class="canvas-card view-card active" id="cardFringe"><h4>干涉条纹图样（反射光）</h4><canvas id="fringeCanvas" width="740" height="390"></canvas></div>
+                <div class="canvas-card view-card" id="cardSection"><h4>劈尖截面与厚度分布</h4><canvas id="sectionCanvas" width="370" height="195"></canvas></div>
+            </div>
+            <div class="defect-view" id="defectView">
+                <div class="canvas-card" style="height:330px;"><h4>光学元件表面平整度检验</h4><canvas id="defectCanvas" width="570" height="310"></canvas><div class="defect-result" id="defectResult">💡 启用表面缺陷后，网页将迅速通过条纹弯曲方向判断器件凹凸。</div></div>
+            </div>
+        </div>
+        <div class="control">
+            <h2>参数控制面板</h2>
+            <div class="desc-single">单色平行光垂直入射到劈尖形空气薄膜上，上下表面反射光发生<strong>等厚干涉</strong>，形成平行于棱边的明暗相间条纹。<br><span style="color:var(--tech-yellow);">角度增大 → 条纹变密 → 条纹数增多</span></div>
+            <div class="group">
+                <div class="group-header">实验查阅</div>
+                <div class="btn-row">
+                    <button onclick="openModal('principle')">实验原理</button>
+                    <button onclick="openModal('rule')">实验规律</button>
+                    <button onclick="openModal('application')">应用场景</button>
+                </div>
+            </div>
+            <div class="formula">
+                <div class="main-formula">δ = 2d + λ/2 &nbsp; (n=1)</div>
+                <div>暗纹：2d = mλ &nbsp; 明纹：2d = (m+½)λ</div>
+                <div style="margin-top:5px; color:var(--text-faint); font-size:15px;">条纹间距 Δx = λ / (2·tanα) &nbsp; 条纹数 N = 2L·tanα / λ</div>
+            </div>
+            <div class="group">
+                <div class="group-header">光源模式</div>
+                <div class="btn-row">
+                    <button class="active" id="btnMono" onclick="setLight('mono')">单色光</button>
+                    <button id="btnWhite" onclick="setLight('white')">白光</button>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">几何与物理参数 <span class="n-fixed-badge">n = 1 (空气)</span></div>
+                <div class="slider-wrap"><div class="slider-label"><span>劈尖夹角 α</span><span id="angleVal">0.0082°</span></div><div class="slider-bar-row"><input type="range" id="angleSlider" min="0" max="100" value="20"><div class="input-unit-group"><input type="number" id="angleNum" value="0.0082"><span>°</span></div></div></div>
+                <div class="slider-wrap"><div class="slider-label"><span>劈尖长度 L</span><span id="lengthVal">55.0 mm</span></div><div class="slider-bar-row"><input type="range" id="lengthSlider" min="20" max="60" value="55"><div class="input-unit-group"><input type="number" id="lengthNum" value="55"><span>mm</span></div></div></div>
+                <div class="slider-wrap"><div class="slider-label"><span>入射波长 λ</span><span id="lambdaVal">589 nm</span></div><div class="slider-bar-row"><input type="range" id="lambdaSlider" min="380" max="760" value="589"><div class="input-unit-group"><input type="number" id="lambdaNum" value="589"><span>nm</span></div></div></div>
+            </div>
+            <div class="group">
+                <div class="group-header">实时仿真数据</div>
+                <div class="data-row"><div class="data-card"><div class="data-label">条纹间距 Δx</div><div class="data-value" id="deltaXVal">--</div></div><div class="data-card"><div class="data-label">最大厚度 d<sub>max</sub></div><div class="data-value" id="dMaxVal">--</div></div></div>
+                <div class="data-row" style="margin-top:8px;"><div class="data-card"><div class="data-label">可见条纹数 N</div><div class="data-value" id="stripeCountVal">--</div></div><div class="data-card"><div class="data-label">最大光程差</div><div class="data-value" id="pathDiffVal">--</div></div></div>
+            </div>
+            <div class="group">
+                <div class="group-header">应用实例-表面平整度检测</div>
+                <div class="check-row"><input type="checkbox" id="defectCheck"><label>启用表面缺陷</label></div>
+                <div class="slider-wrap"><div class="slider-label"><span>缺陷位置</span><span id="defectPosVal">0.50</span></div><input type="range" id="defectPos" min="0.1" max="0.9" value="0.5" step="0.05"></div>
+                <div class="slider-wrap"><div class="slider-label"><span>缺陷高度（正凸负凹）</span><span id="defectHeightVal">0.10 μm</span></div><input type="range" id="defectHeight" min="-1.0" max="1.0" value="0.1" step="0.05"></div>
+            </div>
+            <div class="group">
+                <div class="group-header">自动变化控制</div>
+                <div class="check-row"><input type="checkbox" id="autoAngleCheck"><label>夹角自动变化（梯度步长）</label></div>
+                <div class="check-row"><input type="checkbox" id="autoLengthCheck"><label>长度自动变化</label></div>
+                <div class="check-row"><input type="checkbox" id="autoLambdaCheck"><label>波长自动变化<span id="lambdaAutoTip"></span></label></div>
+                <div class="speed-slider-wrap"><div class="group-header">动画速度</div><input id="speedSlider" min="0" max="2" value="1" step="1" type="range" style="width:100%;margin:6px 0;"><div class="speed-label-row"><span>慢速</span><span>中速</span><span>快速</span></div></div>
+                <div class="auto-btn-row"><button class="auto-reset-btn" onclick="resetAll()">重置全部参数</button><button class="auto-run-btn" id="autoRunBtn" onclick="toggleAutoRun()">▶ 开始自动变化</button></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-mask" id="modalMask">
+    <div class="modal-box">
+        <h3 class="modal-title" id="modalTitle"></h3>
+        <div id="modalContent"></div>
+        <button class="modal-close-btn" onclick="closeModal()">关闭窗口</button>
+    </div>
+</div>
+<script>
+    (function() {
+        const N_FIXED = 1.0;
+        const ALPHA_MIN_RAD = 0.00002, ALPHA_MAX_RAD = 0.0012;
+        const state = { alphaRad:0.00006, lengthMM:55, lambdaNM:589, n:N_FIXED, isWhiteLight:false, defectEnabled:false, defectPos:0.5, defectHeight:0.1, angleDir:1, lenDir:1, lamDir:1 };
+        const rotateState = { rotX:-0.4, rotY:0.6, isDragging:false, lastX:0, lastY:0 };
+        const viewState = { showFringe: true, showSection: false, showDefect: false };
+        let autoRunning = false, autoTimer = null;
+        const speedStep = [1,4,10];
+
+        const model3DCanvas = document.getElementById('model3DCanvas');
+        const model3DCtx = model3DCanvas.getContext('2d');
+        const waveDiagramCanvas = document.getElementById('waveDiagramCanvas');
+        const waveDiagramCtx = waveDiagramCanvas.getContext('2d');
+        const sectionCanvas = document.getElementById('sectionCanvas');
+        const sectionCtx = sectionCanvas.getContext('2d');
+        const fringeCanvas = document.getElementById('fringeCanvas');
+        const fringeCtx = fringeCanvas.getContext('2d');
+        const defectCanvas = document.getElementById('defectCanvas');
+        const defectCtx = defectCanvas.getContext('2d');
+
+        function sliderToAlphaRad(t) { const c = Math.max(0,Math.min(1,t)); return ALPHA_MIN_RAD + (ALPHA_MAX_RAD-ALPHA_MIN_RAD)*c*c; }
+        function getAngleRad() { return state.alphaRad; }
+        function getLambdaMeter() { return state.lambdaNM*1e-9; }
+        function getLengthMeter() { return state.lengthMM*1e-3; }
+        function getThicknessAtMeter(xM, yN=0.5) { 
+            let d = xM * Math.tan(getAngleRad()); 
+            if(state.defectEnabled) { 
+                const cM = state.defectPos * getLengthMeter(); 
+                const wM = getLengthMeter() * 0.04;
+                const gX = Math.exp(-((xM - cM) ** 2) / (2 * wM ** 2)); 
+                const gY = Math.exp(-((yN - 0.5) ** 2) / (2 * 0.06 ** 2));
+                d -= state.defectHeight * 1e-6 * gX * gY;
+            } 
+            return d; 
+        }
+        function getThicknessAtMeterXonly(xM) { 
+            let d = xM * Math.tan(getAngleRad()); 
+            if(state.defectEnabled) { 
+                const cM = state.defectPos * getLengthMeter(); 
+                const wM = getLengthMeter() * 0.04;
+                d -= state.defectHeight * 1e-6 * Math.exp(-((xM - cM) ** 2) / (2 * wM ** 2));
+            } 
+            return d; 
+        }
+        function getFringeSpacingMeter() { const a=getAngleRad(); if(a<1e-12) return Infinity; return getLambdaMeter()/(2*state.n*Math.tan(a)); }
+        function getFringeCount() { const a=getAngleRad(); if(a<1e-12) return 0; return Math.floor(2*state.n*getLengthMeter()*Math.tan(a)/getLambdaMeter()); }
+        function getMaxThicknessMeter() { return getThicknessAtMeterXonly(getLengthMeter()); }
+        function getMaxPathDiffMeter() { return 2*state.n*getMaxThicknessMeter()+getLambdaMeter()/2; }
+        function waveToRgb(wl) { 
+            let r=0,g=0,b=0; 
+            if(wl>=380&&wl<440){r=-(wl-440)/60;g=0;b=1;} 
+            else if(wl>=440&&wl<490){r=0;g=(wl-440)/50;b=1;} 
+            else if(wl>=490&&wl<510){r=0;g=1;b=-(wl-510)/20;} 
+            else if(wl>=510&&wl<580){r=(wl-510)/70;g=1;b=0;} 
+            else if(wl>=580&&wl<645){r=1;g=-(wl-645)/65;b=0;} 
+            else if(wl>=645&&wl<=760){r=1;g=0;b=0;} 
+            let f=1.0; 
+            if(wl<420)f=0.3+0.7*(wl-380)/40; 
+            if(wl>700)f=0.3+0.7*(760-wl)/60; 
+            r*=f; g*=f; b*=f;
+            return {r:Math.round(Math.min(1,r)*255), g:Math.round(Math.min(1,g)*255), b:Math.round(Math.min(1,b)*255)}; 
+        }
+
+        function drawWaveDiagram(){
+            const ctx=waveDiagramCtx;
+            const W=waveDiagramCanvas.width,H=waveDiagramCanvas.height;
+            ctx.clearRect(0,0,W,H);
+            const mY=H-16,amp=7,wL=14;
+            const lX=W*0.28,rX=W*0.72;
+            ctx.fillStyle='rgba(180,180,180,0.25)';
+            ctx.strokeStyle='rgba(200,200,200,0.6)';
+            ctx.fillRect(10,mY,W-20,14);
+            ctx.strokeRect(10,mY,W-20,14);
+            function dv(x,ys,ye,a,w,p,c,d){
+                ctx.save();
+                ctx.strokeStyle=c;
+                ctx.lineWidth=1.6;
+                if(d)ctx.setLineDash([4,3]); else ctx.setLineDash([]);
+                ctx.beginPath();
+                const dir=ye>ys?1:-1;
+                const len=Math.abs(ye-ys);
+                for(let i=0;i<=len;i++){
+                    const y=ys+i*dir;
+                    const o=a*Math.sin((i/w)*Math.PI*2+p);
+                    if(i===0)ctx.moveTo(x+o,y); else ctx.lineTo(x+o,y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+            dv(lX,8,mY,amp,wL,0,'#ff6677',true);
+            dv(lX-2,mY,8,amp,wL,Math.PI,'#ff6677',false);
+            dv(lX+2,mY,8,amp,wL,0,'#ff6677',false);
+            ctx.fillStyle='#ff6677'; ctx.font='bold 10px sans-serif'; ctx.textAlign='center'; ctx.fillText('暗条纹',lX,7);
+            dv(rX,8,mY,amp,wL,0,'#3dff9a',true);
+            dv(rX-2,mY,8,amp,wL,0,'#3dff9a',false);
+            dv(rX+2,mY,8,amp,wL,0,'#3dff9a',false);
+            ctx.fillStyle='#3dff9a'; ctx.fillText('明条纹',rX,7);
+        }
+        function project(x,y,z,cx,cy,scale){
+            const cosY=Math.cos(rotateState.rotY),sinY=Math.sin(rotateState.rotY);
+            const x1=x*cosY-z*sinY,z1=x*sinY+z*cosY;
+            const cosX=Math.cos(rotateState.rotX),sinX=Math.sin(rotateState.rotX);
+            const y1=y*cosX-z1*sinX,z2=y*sinX+z1*cosX;
+            const p=700;
+            const d=p+z2;
+            const f=d>10?p/d:p/10;
+            return {x:cx+x1*f*scale,y:cy+y1*f*scale,z:z2};
+        }
+        function draw3DModel(){
+            const ctx=model3DCtx;
+            const W=model3DCanvas.width,H=model3DCanvas.height;
+            ctx.clearRect(0,0,W,H);
+            const cx=W/2, cy=H/2 + 25, scale=7.2;
+            const theta=getAngleRad();
+            const len=state.lengthMM*0.8, gT=3, width=25;
+            const lift=len*Math.tan(theta)*100;
+            const v={
+                btfl:{x:-len/2,y:0,z:-width/2}, btfr:{x:len/2,y:0,z:-width/2},
+                btbl:{x:-len/2,y:0,z:width/2}, btbr:{x:len/2,y:0,z:width/2},
+                bbfl:{x:-len/2,y:gT,z:-width/2}, bbfr:{x:len/2,y:gT,z:-width/2},
+                bbbl:{x:-len/2,y:gT,z:width/2}, bbbr:{x:len/2,y:gT,z:width/2},
+                ttfl:{x:-len/2,y:0,z:-width/2}, ttfr:{x:len/2,y:-lift,z:-width/2},
+                ttbl:{x:-len/2,y:0,z:width/2}, ttbr:{x:len/2,y:-lift,z:width/2},
+                tffl:{x:-len/2,y:-gT,z:-width/2}, tffr:{x:len/2,y:-lift-gT,z:-width/2},
+                tfbl:{x:-len/2,y:-gT,z:width/2}, tfbr:{x:len/2,y:-lift-gT,z:width/2}
+            };
+            const proj={};
+            for(let k in v)proj[k]=project(v[k].x,v[k].y,v[k].z,cx,cy,scale);
+            const faces=[
+                {p:['btfl','btfr','bbfr','bbfl'],c:'rgba(100,170,120,0.35)'},
+                {p:['btfr','btbr','bbbr','bbfr'],c:'rgba(80,140,100,0.3)'},
+                {p:['btfl','btfr','btbr','btbl'],c:'rgba(120,190,140,0.45)'},
+                {p:['ttfl','ttfr','btfr','btfl'],c:'rgba(100,180,255,0.15)'},
+                {p:['tffl','tffr','ttfr','ttfl'],c:'rgba(130,180,230,0.35)'},
+                {p:['tffr','tfbr','ttbr','ttfr'],c:'rgba(100,150,200,0.3)'},
+                {p:['tffl','tffr','tfbr','tfbl'],c:'rgba(160,210,255,0.45)'}
+            ];
+            faces.forEach(f=>{
+                ctx.beginPath();
+                f.p.forEach((p,i)=>{
+                    const pt=proj[p];
+                    if(i===0)ctx.moveTo(pt.x,pt.y);
+                    else ctx.lineTo(pt.x,pt.y);
+                });
+                ctx.closePath();
+                ctx.fillStyle=f.c;
+                ctx.fill();
+                ctx.strokeStyle='rgba(180,220,255,0.4)';
+                ctx.lineWidth=1;
+                ctx.stroke();
+            });
+            ctx.strokeStyle='#ff5e5e'; ctx.lineWidth=2;
+            ctx.beginPath();
+            ctx.moveTo(proj.ttfl.x,proj.ttfl.y);
+            ctx.lineTo(proj.ttbl.x,proj.ttbl.y);
+            ctx.stroke();
+            ctx.fillStyle='#ff8888'; ctx.font='bold 13px sans-serif';
+            ctx.fillText('棱边 O',proj.ttfl.x-32,proj.ttfl.y-8);
+        }
+        function drawSection(){
+            const W=sectionCanvas.width,H=sectionCanvas.height;
+            const ctx=sectionCtx;
+            ctx.clearRect(0,0,W,H);
+            const theta=getAngleRad();
+            const bY=H-40;
+            const aX=35, fX=W-35;
+            const boardThick=8;
+            const visualScale=100;
+            const thickPx = (fX - aX) * Math.tan(theta) * visualScale;
+            const dX = aX + (fX - aX) * state.defectPos;
+
+            ctx.fillStyle='rgba(100,160,120,0.5)';
+            ctx.fillRect(aX-5, bY, fX-aX+10, 20);
+            ctx.strokeStyle='#555';
+            ctx.lineWidth=1.5;
+            ctx.strokeRect(aX-5, bY, fX-aX+10, 20);
+
+            ctx.fillStyle='rgba(180,210,255,0.8)';
+            ctx.beginPath();
+            ctx.moveTo(aX, bY);
+            ctx.lineTo(fX, bY - thickPx);
+            ctx.lineTo(fX, bY - thickPx - boardThick);
+            ctx.lineTo(aX, bY - boardThick);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle='#555';
+            ctx.stroke();
+
+            ctx.fillStyle='rgba(200,200,200,0.3)';
+            ctx.beginPath();
+            ctx.moveTo(aX, bY);
+            ctx.lineTo(fX, bY - thickPx);
+            ctx.lineTo(fX, bY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle='#888';
+            ctx.stroke();
+
+            if(state.defectEnabled){
+                const dA = Math.abs(state.defectHeight) * 15;
+                const isConvex = state.defectHeight > 0;
+                ctx.fillStyle = 'rgba(100,100,100,0.7)';
+                ctx.beginPath();
+                for(let x = aX; x <= fX; x++){
+                    let y = bY;
+                    if(Math.abs(x - dX) <= 30){
+                        const g = Math.exp(-((x - dX) ** 2) / (2 * 12 ** 2));
+                        y = bY + (isConvex ? -dA * g : dA * g);
+                    }
+                    if(x === aX) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.lineTo(fX, bY+20);
+                ctx.lineTo(aX, bY+20);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle='#555';
+                ctx.lineWidth=1.5;
+                ctx.strokeRect(aX-5, bY, fX-aX+10, 20);
+            }
+
+            ctx.fillStyle='#e74c3c';
+            ctx.font='bold 11px sans-serif';
+            ctx.fillText('棱边（薄端）', aX-20, bY+35);
+            ctx.fillText('厚端', fX-30, bY+35);
+        }
+        function drawFringe(){
+            const W=fringeCanvas.width,H=fringeCanvas.height;
+            const ctx=fringeCtx;
+            ctx.clearRect(0,0,W,H);
+            const alpha=getAngleRad();
+            const lambdaM=getLambdaMeter();
+            const n=state.n;
+            const L=getLengthMeter();
+            const bg=ctx.createLinearGradient(0,0,W,H);
+            bg.addColorStop(0,"#050810");
+            bg.addColorStop(1,"#10182b");
+            ctx.fillStyle=bg;
+            ctx.fillRect(0,0,W,H);
+
+            if(state.isWhiteLight){
+                // 参考用户提供的白光干涉绘图逻辑
+                const spectrum = [
+                    { λ: 650e-9, rgb: [1, 0, 0] },
+                    { λ: 550e-9, rgb: [0, 1, 0] },
+                    { λ: 450e-9, rgb: [0, 0, 1] }
+                ];
+                const img = ctx.createImageData(W, H);
+                const data = img.data;
+                for (let py = 0; py < H; py++) {
+                    const yN = py / H;
+                    for (let px = 0; px < W; px++) {
+                        const xM = (px / W) * L;
+                        const dM = getThicknessAtMeter(xM, yN);
+                        let R = 0, G = 0, B = 0;
+                        for (const sp of spectrum) {
+                            // 空气劈尖反射光强：相位含半波损失π
+                            const delta = 2 * n * dM; // 垂直入射 cosθ=1
+                            const phase = 2 * Math.PI * delta / sp.λ + Math.PI;
+                            const I = Math.pow(Math.cos(phase / 2), 2);
+                            R += I * sp.rgb[0];
+                            G += I * sp.rgb[1];
+                            B += I * sp.rgb[2];
+                        }
+                        const idx = (py * W + px) * 4;
+                        data[idx] = Math.min(255, R * 255);
+                        data[idx+1] = Math.min(255, G * 255);
+                        data[idx+2] = Math.min(255, B * 255);
+                        data[idx+3] = 255;
+                    }
+                }
+                ctx.putImageData(img, 0, 0);
+            } else {
+                const rgb=waveToRgb(state.lambdaNM);
+                const img=ctx.createImageData(W,H);
+                const d=img.data;
+                for(let py=0;py<H;py++){
+                    const yN=py/H;
+                    for(let px=0;px<W;px++){
+                        const xM=(px/W)*L;
+                        const dM=getThicknessAtMeter(xM,yN);
+                        const phase=4*Math.PI*n*dM/lambdaM+Math.PI;
+                        const int=(1+Math.cos(phase))/2;
+                        const br=Math.pow(int,1.3);
+                        const ir=Math.round(rgb.r*0.1+rgb.r*0.9*br);
+                        const ig=Math.round(rgb.g*0.1+rgb.g*0.9*br);
+                        const ib=Math.round(rgb.b*0.1+rgb.b*0.9*br);
+                        const idx=(py*W+px)*4;
+                        d[idx]=Math.min(255,ir);
+                        d[idx+1]=Math.min(255,ig);
+                        d[idx+2]=Math.min(255,ib);
+                        d[idx+3]=255;
+                    }
+                }
+                ctx.putImageData(img,0,0);
+            }
+            ctx.fillStyle='rgba(0,0,0,0.55)';
+            ctx.fillRect(6,6,240,68);
+            ctx.fillStyle='#f8fbff'; ctx.font='12px sans-serif';
+            ctx.fillText(`α = ${(getAngleRad()*180/Math.PI).toFixed(4)}°`,14,24);
+            ctx.fillText(`Δx = ${getFringeSpacingMeter()===Infinity?'∞':(getFringeSpacingMeter()*1e3).toFixed(3)+' mm'}`,14,44);
+            ctx.fillText(`N ≈ ${getFringeCount()} 条`,14,64);
+            ctx.fillStyle='#8096b8'; ctx.font='11px sans-serif';
+            ctx.fillText('薄端（棱边） →',5,H-5);
+            ctx.fillText('← 厚端',W-85,H-5);
+        }
+        function drawDefect(){
+            const W=defectCanvas.width,H=defectCanvas.height;
+            const ctx=defectCtx;
+            ctx.clearRect(0,0,W,H);
+            ctx.fillStyle='#f5f5f0';
+            ctx.fillRect(0,0,W,H);
+
+            const sY=H*0.35;
+            const pX=45;
+            const dW=W-pX*2;
+            const bY=sY+20;
+            const boardThick=8;
+            const visualScale=100;
+            const thickPx = dW * Math.tan(getAngleRad()) * visualScale;
+            const dX = pX + dW * state.defectPos;
+
+            ctx.fillStyle='#b8d8c8';
+            ctx.fillRect(pX, bY, dW, 20);
+            ctx.strokeStyle='#555';
+            ctx.lineWidth=1.5;
+            ctx.strokeRect(pX, bY, dW, 20);
+
+            ctx.fillStyle='#c8ddf8';
+            ctx.beginPath();
+            ctx.moveTo(pX, bY);
+            ctx.lineTo(pX+dW, bY - thickPx);
+            ctx.lineTo(pX+dW, bY - thickPx - boardThick);
+            ctx.lineTo(pX, bY - boardThick);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle='#555';
+            ctx.stroke();
+
+            ctx.fillStyle='rgba(200,200,200,0.3)';
+            ctx.beginPath();
+            ctx.moveTo(pX, bY);
+            ctx.lineTo(pX+dW, bY - thickPx);
+            ctx.lineTo(pX+dW, bY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle='#888';
+            ctx.stroke();
+
+            if(state.defectEnabled){
+                const dA = Math.abs(state.defectHeight) * 15;
+                const isConvex = state.defectHeight > 0;
+                ctx.fillStyle = 'rgba(100,100,100,0.7)';
+                ctx.beginPath();
+                for(let x = pX; x <= pX+dW; x++){
+                    let y = bY;
+                    if(Math.abs(x - dX) <= 30){
+                        const g = Math.exp(-((x - dX) ** 2) / (2 * 12 ** 2));
+                        y = bY + (isConvex ? -dA * g : dA * g);
+                    }
+                    if(x === pX) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.lineTo(pX+dW, bY+20);
+                ctx.lineTo(pX, bY+20);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle='#555';
+                ctx.lineWidth=1.5;
+                ctx.strokeRect(pX, bY, dW, 20);
+            }
+
+            ctx.fillStyle='#e74c3c';
+            ctx.font='bold 11px sans-serif';
+            ctx.fillText('棱边（薄端）', pX-20, bY+35);
+            ctx.fillText('厚端', pX+dW-30, bY+35);
+
+            const fT=sY+75, fH=H-fT-25;
+            const sp=dW/12;
+            ctx.fillStyle='#4a3c1a';
+            ctx.fillRect(pX,fT,dW,fH);
+            ctx.strokeStyle='#666';
+            ctx.strokeRect(pX,fT,dW,fH);
+            ctx.fillStyle='#8B7355';
+            ctx.textAlign='center';
+            ctx.fillText('干涉条纹（俯视图）',pX+dW/2,fT-10);
+            ctx.textAlign='start';
+
+            const bPx = state.defectEnabled ? state.defectHeight * 6 : 0;
+            ctx.strokeStyle='#d4a76a';
+            ctx.lineWidth=Math.max(2,sp*0.4);
+            for(let i=0;i<12;i++){
+                const bX = pX + sp * (i + 0.5);
+                ctx.beginPath();
+                for(let y = fT; y <= fT + fH; y++){
+                    const t = (y - fT) / fH;
+                    const gW = Math.exp(-((t - 0.5) ** 2) / (2 * 0.08 ** 2));
+                    let oX = 0;
+                    if(state.defectEnabled && Math.abs(bPx) > 0.1){
+                        const dist = (bX - dX) / (dW * 0.06);
+                        const sW = Math.exp(-(dist ** 2) / 2);
+                        oX = bPx * gW * sW;
+                    }
+                    const x = bX + oX;
+                    if(y === fT) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            if(state.defectEnabled){
+                ctx.fillStyle='rgba(255,0,0,0.3)';
+                ctx.beginPath();
+                ctx.arc(dX,fT+fH/2,5,0,2*Math.PI);
+                ctx.fill();
+            }
+            document.getElementById('defectResult').innerHTML=state.defectEnabled?
+                `✅当前为 <span class="${state.defectHeight>0?'convex':'concave'}">${state.defectHeight>0?'凸起':'凹陷'}</span> 缺陷`
+                :'💡 启用表面缺陷后，网页将迅速通过条纹弯曲方向判断器件凹凸。';
+        }
+        function updateData(){
+            const spM=getFringeSpacingMeter();
+            document.getElementById('deltaXVal').textContent=spM===Infinity?'∞':(spM*1e3).toFixed(3)+' μm';
+            document.getElementById('dMaxVal').textContent=(getMaxThicknessMeter()*1e6).toFixed(3)+' μm';
+            document.getElementById('pathDiffVal').textContent=(getMaxPathDiffMeter()*1e6).toFixed(2)+' μm';
+            document.getElementById('stripeCountVal').textContent=getFringeCount();
+            document.getElementById('defectPosVal').textContent=state.defectPos.toFixed(2);
+            document.getElementById('defectHeightVal').textContent=state.defectHeight.toFixed(2)+' μm';
+        }
+        function syncAngleFromSlider(){
+            const t=Number(document.getElementById('angleSlider').value)/100;
+            state.alphaRad=sliderToAlphaRad(t);
+            const deg=state.alphaRad*180/Math.PI;
+            document.getElementById('angleNum').value=deg.toFixed(4);
+            document.getElementById('angleVal').textContent=deg.toFixed(4)+'°';
+        }
+        function syncAngleFromNum(){
+            let deg=parseFloat(document.getElementById('angleNum').value);
+            if(isNaN(deg))deg=0;
+            state.alphaRad=Math.max(ALPHA_MIN_RAD,Math.min(ALPHA_MAX_RAD,deg*Math.PI/180));
+            const t=(state.alphaRad-ALPHA_MIN_RAD)/(ALPHA_MAX_RAD-ALPHA_MIN_RAD);
+            document.getElementById('angleSlider').value=Math.round(Math.sqrt(t)*100);
+            document.getElementById('angleNum').value=(state.alphaRad*180/Math.PI).toFixed(4);
+            document.getElementById('angleVal').textContent=(state.alphaRad*180/Math.PI).toFixed(4)+'°';
+        }
+        function bindControl(){
+            document.getElementById('angleSlider').addEventListener('input',()=>{syncAngleFromSlider();refreshAll();});
+            document.getElementById('angleNum').addEventListener('blur',()=>{syncAngleFromNum();refreshAll();});
+            document.getElementById('lengthSlider').addEventListener('input',()=>{
+                state.lengthMM=parseFloat(document.getElementById('lengthSlider').value);
+                document.getElementById('lengthNum').value=state.lengthMM.toFixed(1);
+                document.getElementById('lengthVal').textContent=state.lengthMM.toFixed(1)+' mm';
+                refreshAll();
+            });
+            document.getElementById('lambdaSlider').addEventListener('input',()=>{
+                state.lambdaNM=parseFloat(document.getElementById('lambdaSlider').value);
+                document.getElementById('lambdaNum').value=Math.round(state.lambdaNM);
+                document.getElementById('lambdaVal').textContent=Math.round(state.lambdaNM)+' nm';
+                refreshAll();
+            });
+            document.getElementById('defectCheck').addEventListener('change',()=>{
+                state.defectEnabled=document.getElementById('defectCheck').checked;
+                refreshAll();
+            });
+            document.getElementById('defectPos').addEventListener('input',()=>{
+                state.defectPos=parseFloat(document.getElementById('defectPos').value);
+                refreshAll();
+            });
+            document.getElementById('defectHeight').addEventListener('input',()=>{
+                state.defectHeight=parseFloat(document.getElementById('defectHeight').value);
+                refreshAll();
+            });
+        }
+        window.toggleView=function(t){
+            if(t==='defect'){
+                viewState.showDefect=!viewState.showDefect;
+                document.getElementById('normalViews').style.display=viewState.showDefect?'none':'flex';
+                document.getElementById('defectView').classList.toggle('active',viewState.showDefect);
+                document.getElementById('btnDefect').classList.toggle('active',viewState.showDefect);
+            }else{
+                if(viewState.showDefect){
+                    viewState.showDefect=false;
+                    document.getElementById('normalViews').style.display='flex';
+                    document.getElementById('defectView').classList.remove('active');
+                    document.getElementById('btnDefect').classList.remove('active');
+                }
+                if(t==='fringe'){
+                    viewState.showFringe=!viewState.showFringe;
+                    document.getElementById('btnFringe').classList.toggle('active',viewState.showFringe);
+                    document.getElementById('cardFringe').classList.toggle('active',viewState.showFringe);
+                }else if(t==='section'){
+                    viewState.showSection=!viewState.showSection;
+                    document.getElementById('btnSection').classList.toggle('active',viewState.showSection);
+                    document.getElementById('cardSection').classList.toggle('active',viewState.showSection);
+                }
+            }
+            refreshAll();
+        };
+        window.setLight=function(m){
+            state.isWhiteLight=m==='white';
+            document.getElementById('btnMono').classList.toggle('active',!state.isWhiteLight);
+            document.getElementById('btnWhite').classList.toggle('active',state.isWhiteLight);
+            document.getElementById('lambdaSlider').disabled=state.isWhiteLight;
+            document.getElementById('lambdaNum').disabled=state.isWhiteLight;
+            document.getElementById('lambdaAutoTip').textContent=state.isWhiteLight?" (白光下无效)":"";
+            refreshAll();
+        };
+        function getAngleStepFactor(a){
+            if(a<0.0001)return 1.6;
+            else if(a<0.0005)return 1.0;
+            else return 0.5;
+        }
+        window.toggleAutoRun=function(){
+            const btn=document.getElementById('autoRunBtn');
+            if(autoRunning){
+                clearInterval(autoTimer);
+                autoRunning=false;
+                btn.classList.remove('pause');
+                btn.textContent='▶ 开始自动变化';
+            }else{
+                autoRunning=true;
+                btn.classList.add('pause');
+                btn.textContent='⏸ 暂停自动变化';
+                const step=speedStep[Number(document.getElementById('speedSlider').value)];
+                autoTimer=setInterval(()=>{
+                    if(document.getElementById('autoAngleCheck').checked){
+                        const dir=state.angleDir;
+                        const f=getAngleStepFactor(state.alphaRad);
+                        let newAlpha=state.alphaRad+dir*step*0.000001*f;
+                        if(newAlpha>=ALPHA_MAX_RAD){newAlpha=ALPHA_MAX_RAD;state.angleDir=-1;}
+                        if(newAlpha<=ALPHA_MIN_RAD){newAlpha=ALPHA_MIN_RAD;state.angleDir=1;}
+                        state.alphaRad=newAlpha;
+                        const t=(newAlpha-ALPHA_MIN_RAD)/(ALPHA_MAX_RAD-ALPHA_MIN_RAD);
+                        document.getElementById('angleSlider').value=Math.round(Math.sqrt(t)*100);
+                        const deg=newAlpha*180/Math.PI;
+                        document.getElementById('angleNum').value=deg.toFixed(4);
+                        document.getElementById('angleVal').textContent=deg.toFixed(4)+'°';
+                    }
+                    if(document.getElementById('autoLengthCheck').checked){
+                        state.lengthMM+=state.lenDir*step*0.1;
+                        if(state.lengthMM>=60){state.lengthMM=60;state.lenDir=-1;}
+                        if(state.lengthMM<=20){state.lengthMM=20;state.lenDir=1;}
+                        document.getElementById('lengthSlider').value=state.lengthMM;
+                        document.getElementById('lengthNum').value=state.lengthMM.toFixed(1);
+                        document.getElementById('lengthVal').textContent=state.lengthMM.toFixed(1)+' mm';
+                    }
+                    if(document.getElementById('autoLambdaCheck').checked&&!state.isWhiteLight){
+                        state.lambdaNM+=state.lamDir*step;
+                        if(state.lambdaNM>=760){state.lambdaNM=760;state.lamDir=-1;}
+                        if(state.lambdaNM<=380){state.lambdaNM=380;state.lamDir=1;}
+                        document.getElementById('lambdaSlider').value=state.lambdaNM;
+                        document.getElementById('lambdaNum').value=Math.round(state.lambdaNM);
+                        document.getElementById('lambdaVal').textContent=Math.round(state.lambdaNM)+' nm';
+                    }
+                    refreshAll();
+                },30);
+            }
+        };
+        window.resetAll=function(){
+            if(autoRunning){
+                clearInterval(autoTimer);
+                autoRunning=false;
+                document.getElementById('autoRunBtn').classList.remove('pause');
+                document.getElementById('autoRunBtn').textContent='▶ 开始自动变化';
+            }
+            state.alphaRad=0.00006;
+            state.lengthMM=55;
+            state.lambdaNM=589;
+            state.defectEnabled=false;
+            state.defectPos=0.5;
+            state.defectHeight=0.1;
+            document.getElementById('angleSlider').value=20;
+            syncAngleFromSlider();
+            document.getElementById('lengthSlider').value=55;
+            document.getElementById('lengthNum').value="55.0";
+            document.getElementById('lengthVal').textContent="55.0 mm";
+            document.getElementById('lambdaSlider').value=589;
+            document.getElementById('lambdaNum').value="589";
+            document.getElementById('lambdaVal').textContent="589 nm";
+            document.getElementById('defectCheck').checked=false;
+            document.getElementById('defectPos').value=0.5;
+            document.getElementById('defectHeight').value=0.1;
+            refreshAll();
+        };
+        window.openModal=function(type){
+            document.getElementById('modalTitle').textContent=type==='principle'?'劈尖干涉实验原理':type==='rule'?'劈尖干涉实验规律':'劈尖干涉应用场景';
+            if(type==='principle'){
+                document.getElementById('modalContent').innerHTML=`
+                    <div class="modal-section-title">等厚干涉（n=1空气）</div>
+                    <p style="margin:8px 0;line-height:1.8;font-size:18px;">单色平行光垂直入射到劈尖形空气薄膜上，上下表面反射光发生<strong>等厚干涉</strong>。</p>
+                    <div class="modal-section-title">光程差公式</div>
+                    <div style="background:var(--bg-input);padding:16px;border-radius:8px;text-align:center;font-size:26px;color:var(--tech-cyan-light);">δ = 2d + λ/2</div>
+                    <div class="modal-section-title">干涉条件</div>
+                    <ul style="margin:8px 0 0 20px;line-height:1.9;font-size:18px;">
+                        <li><span class="app-cyan">暗纹</span>：2d = mλ (m=0,1,2...)</li>
+                        <li><span class="app-cyan">明纹</span>：2d = (m+½)λ</li>
+                    </ul>
+                    <div class="modal-section-title">条纹间距</div>
+                    <div style="background:var(--bg-input);padding:16px;border-radius:8px;text-align:center;font-size:24px;color:var(--tech-yellow);">Δx = λ / (2·tanα)</div>
+                `;
+            }else if(type==='rule'){
+                document.getElementById('modalContent').innerHTML=`
+                    <div class="modal-section-title">核心规律</div>
+                    <table class="modal-table">
+                        <tr><th>物理量</th><th>变化</th><th>影响</th></tr>
+                        <tr><td>劈尖夹角 α</td><td>↑</td><td>条纹间距↓ 条纹数↑</td></tr>
+                        <tr><td>波长 λ</td><td>↑</td><td>条纹间距↑ 条纹数↓</td></tr>
+                        <tr><td>长度 L</td><td>↑</td><td>条纹数↑（间距不变）</td></tr>
+                    </table>
+                `;
+            }else{
+                document.getElementById('modalContent').innerHTML=`
+                    <div class="app-tabs">
+                        <button class="app-tab-btn active" data-tab="tab1">平整度</button>
+                        <button class="app-tab-btn" data-tab="tab2">测厚</button>
+                        <button class="app-tab-btn" data-tab="tab3">热膨胀</button>
+                        <button class="app-tab-btn" data-tab="tab4">微小角度</button>
+                        <button class="app-tab-btn" data-tab="tab5">光谱分析</button>
+                    </div>
+                    <div class="app-content active" id="tab1">
+                        <p class="app-text"><strong style="color:var(--tech-cyan-light);">光学元件表面平整度检测</strong><br>将标准光学平板覆盖在被测表面形成劈尖，通过观察干涉条纹的弯曲程度检测表面缺陷。若条纹出现弯曲，说明存在凹凸不平。<span class="app-red">凸起</span>会导致条纹向<span class="app-highlight">厚端（远离棱边）</span>弯曲，<span class="app-cyan">凹陷</span>则向<span class="app-highlight">薄端（棱边方向）</span>弯曲。</p>
+                        <p class="app-text">通过测量条纹弯曲量 <span class="app-highlight">a</span> 与条纹间距 <span class="app-highlight">b</span> 的比值，可精确计算缺陷高度 <span class="app-highlight">Δh ≈ (a/b)·(λ/2)</span>，精度达<span class="app-highlight">纳米级</span>。这是光学车间最常用的<span class="app-highlight">非接触式</span>质量检测手段。</p>
+                    </div>
+                    <div class="app-content" id="tab2">
+                        <p class="app-text"><strong style="color:var(--tech-cyan-light);">薄膜厚度精密测量</strong><br>在半导体和材料科学中，利用劈尖干涉可测量<span class="app-highlight">纳米级薄膜厚度</span>。将薄膜置于劈尖装置中，干涉条纹会产生偏移，通过分析偏移量可推算厚度分布。</p>
+                        <p class="app-text">该方法在<span class="app-highlight">集成电路制造、光学镀膜</span>以及二维材料表征中发挥关键作用，是确保器件性能的重要测量技术。</p>
+                    </div>
+                    <div class="app-content" id="tab3">
+                        <p class="app-text"><strong style="color:var(--tech-cyan-light);">热膨胀系数测量</strong><br>将被测材料制成劈尖形状，均匀加热观察条纹移动数量。温度每升高 <span class="app-highlight">ΔT</span>，若条纹移动了 <span class="app-highlight">ΔN</span> 条，则膨胀量 <span class="app-highlight">ΔL = ΔN·λ/2</span>，从而计算热膨胀系数。</p>
+                        <p class="app-text">该方法灵敏度极高，适合<span class="app-highlight">微小样品或低膨胀材料</span>（如石英、因瓦合金）的热学表征，在航天、精密仪器领域应用广泛。</p>
+                    </div>
+                    <div class="app-content" id="tab4">
+                        <p class="app-text"><strong style="color:var(--tech-cyan-light);">微小角度与位移测量</strong><br>利用条纹间距与劈尖角的关系（<span class="app-highlight">Δx = λ/2tanα</span>），通过精确测量条纹间距可反推出微小角度，分辨率达<span class="app-highlight">亚角秒级</span>。</p>
+                        <p class="app-text">监测条纹移动数量可实现<span class="app-highlight">亚微米级位移测量</span>，广泛用于精密机械校准、光学对准和微机电系统（MEMS）形变检测。</p>
+                    </div>
+                    <div class="app-content" id="tab5">
+                        <p class="app-text"><strong style="color:var(--tech-cyan-light);">光谱分析与波长测量</strong><br>已知劈尖角度时，测量条纹间距可反推入射光波长，用于早期光谱仪器和<span class="app-highlight">激光波长标定</span>。</p>
+                        <p class="app-text">与光栅光谱仪相比，该装置<span class="app-highlight">结构简单、成本低廉</span>，适合教学实验和现场快速检测，帮助理解光的波动本质。</p>
+                    </div>
+                `;
+                setTimeout(()=>{
+                    document.querySelectorAll('.app-tab-btn').forEach(btn=>{
+                        btn.addEventListener('click',function(){
+                            document.querySelectorAll('.app-tab-btn').forEach(b=>b.classList.remove('active'));
+                            this.classList.add('active');
+                            document.querySelectorAll('.app-content').forEach(c=>c.classList.remove('active'));
+                            document.getElementById(this.dataset.tab).classList.add('active');
+                        });
+                    });
+                },50);
+            }
+            document.getElementById('modalMask').style.display='flex';
+        };
+        window.closeModal=function(){
+            document.getElementById('modalMask').style.display='none';
+        };
+        document.getElementById('modalMask').addEventListener('click',(e)=>{
+            if(e.target===document.getElementById('modalMask'))closeModal();
+        });
+        document.getElementById('modelWrap').addEventListener('mousedown',(e)=>{
+            rotateState.isDragging=true;
+            rotateState.lastX=e.clientX;
+            rotateState.lastY=e.clientY;
+        });
+        document.addEventListener('mousemove',(e)=>{
+            if(!rotateState.isDragging)return;
+            const dx=e.clientX-rotateState.lastX,dy=e.clientY-rotateState.lastY;
+            rotateState.rotY+=dx*0.01;
+            rotateState.rotX+=dy*0.01;
+            rotateState.rotX=Math.max(-Math.PI/2,Math.min(Math.PI/2,rotateState.rotX));
+            rotateState.lastX=e.clientX;
+            rotateState.lastY=e.clientY;
+            draw3DModel();
+        });
+        document.addEventListener('mouseup',()=>{rotateState.isDragging=false;});
+        function refreshAll(){
+            drawWaveDiagram();
+            draw3DModel();
+            drawSection();
+            drawFringe();
+            drawDefect();
+            updateData();
+        }
+        function init(){
+            document.getElementById('angleSlider').value=20;
+            syncAngleFromSlider();
+            document.getElementById('lengthSlider').value=55;
+            document.getElementById('lengthNum').value="55.0";
+            document.getElementById('lengthVal').textContent="55.0 mm";
+            document.getElementById('lambdaSlider').value=589;
+            document.getElementById('lambdaNum').value="589";
+            document.getElementById('lambdaVal').textContent="589 nm";
+            bindControl();
+            refreshAll();
+        }
+        window.refreshAll=refreshAll;
+        if(document.readyState==='complete')init();
+        else window.addEventListener('load',init);
+    })();
+</script>
+</body>
+</html>

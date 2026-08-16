@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平行薄膜等倾干涉光学仿真系统</title>
+<style>
+:root {
+    --bg-main: #060a12;
+    --bg-panel: #0c1220;
+    --bg-card: #10182b;
+    --bg-input: #0a0f1c;
+    --tech-cyan: #00e5ff;
+    --tech-cyan-light: #7ef0ff;
+    --tech-blue: #0088ff;
+    --tech-blue-light: #63b8ff;
+    --tech-red: #ff3a4c;
+    --text-main: #f8fbff;
+    --text-sub: #c4d4f0;
+    --text-faint: #8096b8;
+    --border-normal: #1c2a48;
+    --border-glow: rgba(0, 229, 255, 0.35);
+    --glow-soft: 0 0 18px rgba(0, 229, 255, 0.15);
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --trans-fast: 0.18s ease;
+}
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-sub);
+    overflow: hidden;
+}
+.page-wrap {
+    width: 100%;
+    height: 100%;
+    padding: 24px;
+    border: 1px solid var(--border-glow);
+    box-shadow: var(--glow-soft);
+    border-radius: var(--radius-lg);
+}
+.main-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    background: linear-gradient(90deg, var(--tech-blue-light), var(--tech-cyan-light));
+    -webkit-background-clip: text;
+    color: transparent;
+    letter-spacing: 1px;
+}
+.wrap {
+    width: 100%;
+    height: calc(100% - 52px);
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+}
+.canvas-box {
+    background: var(--bg-panel);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-glow);
+    box-shadow: var(--glow-soft);
+    padding: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--tech-cyan) var(--bg-input);
+}
+.canvas-box::-webkit-scrollbar {
+    width: 5px;
+}
+.canvas-box::-webkit-scrollbar-track {
+    background: var(--bg-input);
+    border-radius: 3px;
+}
+.canvas-box::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--tech-cyan), var(--tech-blue));
+    border-radius: 3px;
+}
+.canvas-card {
+    width: 400px;
+    height: 400px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    position: relative;
+    border: 1px solid var(--border-normal);
+}
+.canvas-card h4 {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    color: var(--text-main);
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 2;
+    background: rgba(8,12,22,0.8);
+    padding: 4px 10px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+}
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 6px;
+}
+#reflectCanvas,#transmitCanvas {
+    border-radius: 50%;
+    box-shadow: 0 0 30px #000, inset 0 0 0 1px var(--border-glow);
+}
+.control {
+    background: var(--bg-panel);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-glow);
+    box-shadow: var(--glow-soft);
+    padding: 22px;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--tech-cyan) var(--bg-input);
+}
+.control::-webkit-scrollbar {
+    width: 5px;
+}
+.control::-webkit-scrollbar-track {
+    background: var(--bg-input);
+    border-radius: 3px;
+}
+.control::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--tech-cyan), var(--tech-blue));
+    border-radius: 3px;
+}
+.control h2 {
+    margin: 0 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-normal);
+    color: var(--text-main);
+    font-size: 20px;
+    font-weight: 600;
+}
+.desc-single {
+    font-size: 14px;
+    color: var(--text-faint);
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+.formula {
+    background: linear-gradient(135deg, var(--bg-input), #0e1628);
+    padding: 14px;
+    border-left: 3px solid var(--tech-cyan);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 20px;
+    margin: 14px 0 18px;
+    color: var(--text-main);
+}
+.group {
+    background: linear-gradient(135deg, var(--bg-card), #121c33);
+    padding: 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    border: 1px solid var(--border-normal);
+}
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-main);
+    font-size: 15px;
+}
+.slider-wrap {
+    width: 100%;
+    margin:6px 0;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+.slider-bar-row {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+}
+.slider-bar-row input[type=range] {
+    flex:1;
+    height: 6px;
+    accent-color: var(--tech-cyan);
+    background: var(--bg-input);
+    border-radius: 3px;
+    outline: none;
+}
+.input-unit-group {
+    display:flex;
+    gap:4px;
+    align-items:center;
+}
+input[type=number] {
+    width: 70px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-normal);
+    color: var(--text-main);
+    padding: 6px;
+    text-align: right;
+    border-radius: 6px;
+    font-size: 14px;
+}
+input[type=number]:focus {
+    outline: none;
+    box-shadow: 0 0 8px rgba(0,229,255,0.35);
+    border-color: var(--tech-cyan);
+}
+input:disabled {
+    opacity: 0.3;
+}
+.btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+button {
+    border: none;
+    padding: 10px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-faint);
+    background: linear-gradient(135deg, var(--bg-input), #0d1424);
+    flex: 1;
+    border: 1px solid var(--border-normal);
+    transition: all 0.18s ease;
+    font-weight: 500;
+}
+button:hover {
+    border-color: var(--tech-cyan);
+    color: var(--text-main);
+    box-shadow: 0 0 12px rgba(0,229,255,0.18);
+}
+button.active {
+    background: linear-gradient(135deg, #0058bb, #00d8ff);
+    color: #000;
+    font-weight: 600;
+}
+.reset-btn {
+    background: linear-gradient(135deg, #88182b, #ff3a4c);
+    color: #fff;
+    border-color: var(--tech-red);
+}
+.auto-check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+.auto-check-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--tech-cyan);
+}
+.speed-slider-wrap {
+    margin: 14px 0 10px;
+}
+.speed-label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-faint);
+}
+.auto-btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+.auto-reset-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #222838, #151c2e);
+    color: var(--text-main);
+}
+.auto-run-btn {
+    flex: 1.2;
+    background: linear-gradient(135deg, #0066dd, #00b8ff);
+    color: #000;
+    font-weight: 600;
+}
+.auto-run-btn.pause {
+    background: linear-gradient(135deg, #dd6600, #ffb800);
+}
+/* 修改：缩小卡片高度 */
+.data-card {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-input);
+    border-radius: var(--radius-md);
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid var(--border-normal);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.data-label {
+    font-size: 14px;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+/* 修改：数字整体缩小 */
+.data-value {
+    font-size: clamp(14px, 3vw, 28px);
+    color: var(--tech-cyan-light);
+    font-weight: 700;
+    word-break: break-all;
+    line-height: 1.1;
+    letter-spacing: 1px;
+    font-family: "Consolas", "Monaco", monospace;
+    text-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
+}
+.modal-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.78);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+.modal-box {
+    width: 700px;
+    max-height: 82vh;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-glow);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glow-soft);
+    padding: 24px;
+    overflow-y: auto;
+}
+.modal-title {
+    font-size: 22px;
+    color: var(--text-main);
+    text-align: center;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-normal);
+    font-weight: 600;
+}
+.modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+.modal-table th, .modal-table td {
+    border: 1px solid var(--border-normal);
+    padding: 12px;
+    font-size: 14px;
+    color: var(--text-sub);
+    vertical-align: middle;
+}
+.modal-table th {
+    background-color: var(--bg-card);
+    color: var(--text-main);
+}
+.modal-close-btn {
+    width: 100%;
+    margin-top: 18px;
+    padding: 11px;
+    background: linear-gradient(135deg, #182336, #0f1729);
+    border: 1px solid var(--border-normal);
+    color: var(--text-main);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+}
+.modal-close-btn:hover {
+    border-color: var(--tech-cyan);
+    box-shadow: 0 0 10px rgba(0,229,255,0.15);
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+    <h1 class="main-title">平行薄膜等倾干涉光学仿真系统</h1>
+    <div class="wrap">
+        <div class="canvas-box">
+            <div class="canvas-card">
+                <h4>反射光干涉图样（中心可亮/暗）</h4>
+                <canvas id="reflectCanvas" width="400" height="400"></canvas>
+            </div>
+            <div class="canvas-card">
+                <h4>透射光干涉图样（色彩互补）</h4>
+                <canvas id="transmitCanvas" width="400" height="400"></canvas>
+            </div>
+            <div class="canvas-card" id="setupWrap" style="display:none;width:820px;height:320px;">
+                <h4>标准等倾干涉光路：点光源入射薄膜分两路相干</h4>
+                <canvas id="setupCanvas" width="820" height="320"></canvas>
+            </div>
+        </div>
+        <div class="control">
+            <h2>参数控制面板</h2>
+            <div class="desc-single">
+                点光源从薄膜上方入射，到达上表面分为两束：一束直接反射；一束折射进入薄膜到达下表面反射后穿出，两束反射光干涉形成同心圆环。
+                <br><b>等倾干涉特点：调整厚度d，中心可以亮纹也可以暗纹（区别牛顿环）</b>
+            </div>
+            <div class="formula">δ = 2ndcosθ + λ/2</div>
+            <div class="group">
+                <div class="group-header">实验查阅</div>
+                <div class="btn-row">
+                    <button onclick="openModal('principle')">实验原理</button>
+                    <button onclick="openModal('rule')">干涉规律</button>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">光源类型</div>
+                <div class="btn-row">
+                    <button class="active" id="btnMono" onclick="setLight('mono')">单色光</button>
+                    <button id="btnWhite" onclick="setLight('white')">白光(连续光谱)</button>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">实时仿真数据</div>
+                <div class="data-row" style="display:flex;gap:8px;">
+                    <div class="data-card">
+                        <div class="data-label">光程差 δ</div>
+                        <div class="data-value" id="deltaVal">0.00 nm</div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-label">中心干涉级 m₀</div>
+                        <div class="data-value" id="m0Val">0.00</div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-label">最大环半径</div>
+                        <div class="data-value" id="rMaxVal">0.00 px</div>
+                    </div>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">入射波长 λ (nm)</div>
+                <div class="slider-wrap">
+                    <div class="slider-bar-row">
+                        <input id="sliderLam" min="380" max="780" value="589" step="1" type="range">
+                        <div class="input-unit-group">
+                            <input id="numLam" value="589" min="380" max="780" step="1" type="number">
+                            <span>nm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">薄膜厚度 d (nm)【调节中心亮暗】</div>
+                <div class="slider-wrap">
+                    <div class="slider-bar-row">
+                        <input id="sliderD" min="100" max="1200" value="320" step="1" type="range">
+                        <div class="input-unit-group">
+                            <input id="numD" value="320" min="100" max="1200" step="1" type="number">
+                            <span>nm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">介质折射率 n</div>
+                <div class="slider-wrap">
+                    <div class="slider-bar-row">
+                        <input id="sliderN" min="1.0" max="2.0" value="1.50" step="0.01" type="range">
+                        <div class="input-unit-group">
+                            <input id="numN" value="1.50" min="1.0" max="2.0" step="0.01" type="number">
+                            <span>n</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">最大入射角 θ₀ (°)</div>
+                <div class="slider-wrap">
+                    <div class="slider-bar-row">
+                        <input id="sliderAngle" min="5" max="75" value="48" step="1" type="range">
+                        <div class="input-unit-group">
+                            <input id="numAngle" value="48" min="5" max="75" step="1" type="number">
+                            <span>°</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">视图切换</div>
+                <div class="btn-row">
+                    <button id="btnSetup" onclick="toggleCanvas('setup')">光路总图</button>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group-header">自动变化控制（勾选后启动）</div>
+                <div class="auto-check-row">
+                    <input type="checkbox" id="autoDCheck">
+                    <label>薄膜厚度自动变化</label>
+                </div>
+                <div class="auto-check-row">
+                    <input type="checkbox" id="autoLamCheck">
+                    <label>波长自动变化</label>
+                </div>
+                <div class="auto-check-row">
+                    <input type="checkbox" id="autoNCheck">
+                    <label>折射率自动变化</label>
+                </div>
+                <div class="auto-check-row">
+                    <input type="checkbox" id="autoAngleCheck">
+                    <label>入射角自动变化</label>
+                </div>
+                <div class="speed-slider-wrap">
+                    <div class="group-header">动画速度（3档，松手锁定）</div>
+                    <input id="speedSlider" min="0" max="2" value="1" step="1" type="range" style="width:100%;margin:8px 0;">
+                    <div class="speed-label-row">
+                        <span>慢速</span>
+                        <span>中速</span>
+                        <span>快速</span>
+                    </div>
+                </div>
+                <div class="auto-btn-row">
+                    <button class="auto-reset-btn" onclick="resetAll()">重置全部参数</button>
+                    <button class="auto-run-btn" id="autoRunBtn" onclick="toggleAutoRun()">▶ 开始自动变化</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-mask" id="modalMask">
+    <div class="modal-box">
+        <h3 class="modal-title" id="modalTitle"></h3>
+        <div id="modalContent"></div>
+        <button class="modal-close-btn" onclick="closeModal()">关闭窗口</button>
+    </div>
+</div>
+<script>
+const state = {
+    lambda: 589,
+    d: 320,
+    n: 1.50,
+    angle: 48,
+    lightMode: "mono"
+}
+const viewShow = {
+    setup: false
+}
+const deltaValDom = document.getElementById("deltaVal");
+const m0ValDom = document.getElementById("m0Val");
+const rMaxValDom = document.getElementById("rMaxVal");
+let autoRunning = false;
+let autoTimer = null;
+const speedStep = [1, 4, 10];
+let lamDir = 1, dDir = 1, NDir = 1, angDir = 1;
+let lock = false;
+const reflectCanvas = document.getElementById("reflectCanvas");
+const reCtx = reflectCanvas.getContext("2d");
+const transmitCanvas = document.getElementById("transmitCanvas");
+const trCtx = transmitCanvas.getContext("2d");
+const CANVAS_SIZE = 400;
+const FIX_MAX_R = 170;
+function refreshAll(){
+    if(lock) return;
+    lock = true;
+    requestAnimationFrame(()=>{
+        drawTwoPattern();
+        if(viewShow.setup) drawSetup();
+        updateRealTimeData();
+        lock = false;
+    })
+}
+function updateRealTimeData(){
+    const λ = state.lambda;
+    const d = state.d;
+    const n = state.n;
+    const deg = state.angle;
+    const θ0 = deg * Math.PI / 180;
+    const θ = Math.asin(Math.sin(θ0) / n);
+    const delta = 2 * n * d * Math.cos(θ) + λ / 2;
+    const m0 = (2 * n * d) / λ;
+    const maxR = 170 * Math.tan(θ0) / Math.tan(75 * Math.PI / 180);
+    deltaValDom.innerText = delta.toFixed(2) + " nm";
+    m0ValDom.innerText = m0.toFixed(2);
+    rMaxValDom.innerText = maxR.toFixed(1) + " px";
+}
+function resetAll(){
+    stopAutoAnim();
+    state.lambda = 589;
+    state.d = 320;
+    state.n = 1.50;
+    state.angle = 48;
+    state.lightMode = "mono";
+    document.getElementById("sliderLam").value = 589;
+    document.getElementById("numLam").value = 589;
+    document.getElementById("sliderD").value = 320;
+    document.getElementById("numD").value = 320;
+    document.getElementById("sliderN").value = 1.50;
+    document.getElementById("numN").value = 1.50;
+    document.getElementById("sliderAngle").value = 48;
+    document.getElementById("numAngle").value = 48;
+    document.getElementById("btnMono").classList.add("active");
+    document.getElementById("btnWhite").classList.remove("active");
+    document.getElementById("sliderLam").disabled = false;
+    document.getElementById("numLam").disabled = false;
+    document.getElementById("autoLamCheck").checked = false;
+    document.getElementById("autoDCheck").checked = false;
+    document.getElementById("autoNCheck").checked = false;
+    document.getElementById("autoAngleCheck").checked = false;
+    document.getElementById("speedSlider").value = 1;
+    refreshAll();
+}
+function toggleCanvas(type){
+    const wrapId = "setupWrap";
+    const btnId = "btnSetup";
+    viewShow.setup = !viewShow.setup;
+    const wrap = document.getElementById(wrapId);
+    const btn = document.getElementById(btnId);
+    if(viewShow.setup){
+        wrap.style.display = "block";
+        btn.classList.add("active");
+    }else{
+        wrap.style.display = "none";
+        btn.classList.remove("active");
+    }
+    refreshAll();
+}
+function bindCtrl(key,sliderId,numId,min,max){
+    const s = document.getElementById(sliderId);
+    const n = document.getElementById(numId);
+    function syncValue(val){
+        const numVal = Number(val);
+        const safeVal = Math.max(min, Math.min(max, numVal));
+        s.value = safeVal;
+        n.value = safeVal;
+        state[key] = safeVal;
+        requestAnimationFrame(refreshAll);
+    }
+    s.addEventListener('input', ()=> syncValue(s.value));
+    n.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+            e.preventDefault();
+            syncValue(n.value);
+            n.blur();
+        }
+    });
+    n.addEventListener('blur', ()=> syncValue(n.value));
+}
+bindCtrl("lambda","sliderLam","numLam",380,780);
+bindCtrl("d","sliderD","numD",100,1200);
+bindCtrl("n","sliderN","numN",1.0,2.0);
+bindCtrl("angle","sliderAngle","numAngle",5,75);
+function setLight(mode){
+    state.lightMode = mode;
+    const mono = mode === "mono";
+    document.getElementById("btnMono").classList.toggle("active",mono);
+    document.getElementById("btnWhite").classList.toggle("active",!mono);
+    document.getElementById("sliderLam").disabled = !mono;
+    document.getElementById("numLam").disabled = !mono;
+    refreshAll();
+}
+//波长转RGB标准函数
+function waveToRgb(wl){
+    let r = 0, g = 0, b = 0;
+    if (wl >= 380 && wl < 440) {
+        r = -(wl - 440) / 60; g = 0; b = 1;
+    } else if (wl >= 440 && wl < 490) {
+        r = 0; g = (wl - 440) / 50; b = 1;
+    } else if (wl >= 490 && wl < 510) {
+        r = 0; g = 1; b = -(wl - 510) / 20;
+    } else if (wl >= 510 && wl < 580) {
+        r = (wl - 510) / 70; g = 1; b = 0;
+    } else if (wl >= 580 && wl < 645) {
+        r = 1; g = -(wl - 645) / 65; b = 0;
+    } else if (wl >= 645 && wl <= 780) {
+        r = 1; g = 0; b = 0;
+    }
+    let fade = 1.0;
+    if (wl < 420) fade = 0.3 + 0.7 * (wl - 380) / 40;
+    if (wl > 700) fade = 0.3 + 0.7 * (780 - wl) / 80;
+    r *= fade; g *= fade; b *= fade;
+    return [r, g, b];
+}
+function getLightColor(){
+    if(state.lightMode==="white") return "rgba(255,255,255,0.92)";
+    const [r,g,b] = waveToRgb(state.lambda);
+    return `rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+}
+function drawArrow(ctx,x1,y1,x2,y2,color){
+    const head=8;
+    const ang=Math.atan2(y2-y1,x2-x1);
+    ctx.strokeStyle=color;ctx.lineWidth=2.5;
+    ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-head*Math.cos(ang-Math.PI/6),y2-head*Math.sin(ang-Math.PI/6));
+    ctx.lineTo(x2-head*Math.cos(ang+Math.PI/6),y2-head*Math.sin(ang+Math.PI/6));
+    ctx.closePath();ctx.fill();
+}
+function drawText(ctx,text,x,y,opts={}){
+    ctx.font=opts.font||"14px system-ui, sans-serif";
+    ctx.fillStyle=opts.color||"#f8fbff";
+    ctx.textAlign=opts.align||"center";
+    ctx.textBaseline="middle";
+    if(opts.bold) ctx.font = "bold " + ctx.font;
+    ctx.fillText(text,x,y);
+}
+function drawTwoPattern(){
+    const w = CANVAS_SIZE;
+    const h = CANVAS_SIZE;
+    const cx = w / 2, cy = h / 2;
+    const maxThetaRad = state.angle * Math.PI / 180;
+    const dFilm = state.d;
+    const n = state.n;
+    reCtx.fillStyle = "#000";
+    reCtx.fillRect(0, 0, w, h);
+    trCtx.fillStyle = "#000";
+    trCtx.fillRect(0, 0, w, h);
+    const imgDataRef = reCtx.createImageData(w, h);
+    const dataRef = imgDataRef.data;
+    const imgDataTra = trCtx.createImageData(w, h);
+    const dataTra = imgDataTra.data;
+    if(state.lightMode === "mono"){
+        const λ = state.lambda;
+        const [rBase, gBase, bBase] = waveToRgb(λ);
+        for(let y = 0; y < h; y++){
+            for(let x = 0; x < w; x++){
+                const dx = x - cx;
+                const dy = y - cy;
+                const rPx = Math.sqrt(dx * dx + dy * dy);
+                if(rPx > FIX_MAX_R) continue;
+                const theta = Math.atan( Math.tan(maxThetaRad) * rPx / FIX_MAX_R );
+                const cosθ = Math.cos(theta);
+                const phaseRef = (2 * Math.PI / λ) * (2 * n * dFilm * cosθ) + Math.PI;
+                const phaseTra = (2 * Math.PI / λ) * (2 * n * dFilm * cosθ);
+                let intenRef = Math.pow( Math.cos( phaseRef / 2 ), 2 );
+                let intenTra = Math.pow( Math.cos( phaseTra / 2 ), 2 );
+                const idx = (y * w + x) * 4;
+                dataRef[idx]   = rBase * intenRef * 255;
+                dataRef[idx+1] = gBase * intenRef * 255;
+                dataRef[idx+2] = bBase * intenRef * 255;
+                dataRef[idx+3] = 255;
+                dataTra[idx]   = rBase * intenTra * 255 * 0.45;
+                dataTra[idx+1] = gBase * intenTra * 255 * 0.45;
+                dataTra[idx+2] = bBase * intenTra * 255 * 0.45;
+                dataTra[idx+3] = 255;
+            }
+        }
+    }else{
+        //连续光谱采样，模拟平滑彩虹环，贴近示例效果图
+        const sampleCount = 24;
+        const startWl = 380;
+        const endWl = 780;
+        const gainRef = 1.7;
+        const gainTra = 0.58;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const dx = x - cx;
+                const dy = y - cy;
+                const rPx = Math.sqrt(dx * dx + dy * dy);
+                const idx = (y * w + x) * 4;
+                if(rPx > FIX_MAX_R){
+                    dataRef[idx] = dataRef[idx+1] = dataRef[idx+2] = 0;
+                    dataRef[idx+3] = 255;
+                    dataTra[idx] = dataTra[idx+1] = dataTra[idx+2] = 0;
+                    dataTra[idx+3] = 255;
+                    continue;
+                }
+                const theta = Math.atan(Math.tan(maxThetaRad) * rPx / FIX_MAX_R);
+                const cosθ = Math.cos(theta);
+                const OPD = 2 * n * dFilm * cosθ;
+                let rRef=0,gRef=0,bRef=0;
+                let rTra=0,gTra=0,bTra=0;
+                for(let s=0;s<sampleCount;s++){
+                    const λ = startWl + (endWl - startWl) * s/(sampleCount-1);
+                    const [sr,sg,sb] = waveToRgb(λ);
+                    const phiR = 2 * Math.PI / λ * OPD + Math.PI;
+                    const iR = Math.cos(phiR/2)**2;
+                    rRef += sr * iR;
+                    gRef += sg * iR;
+                    bRef += sb * iR;
+                    const phiT = 2 * Math.PI / λ * OPD;
+                    const iT = Math.cos(phiT/2)**2;
+                    rTra += sr * iT;
+                    gTra += sg * iT;
+                    bTra += sb * iT;
+                }
+                const norm = sampleCount;
+                //反射通道
+                dataRef[idx]     = Math.min(255, rRef / norm * gainRef * 255);
+                dataRef[idx + 1] = Math.min(255, gRef / norm * gainRef * 255);
+                dataRef[idx + 2] = Math.min(255, bRef / norm * gainRef * 255);
+                dataRef[idx + 3] = 255;
+                //透射通道
+                dataTra[idx]     = Math.min(255, rTra / norm * gainTra * 255);
+                dataTra[idx + 1] = Math.min(255, gTra / norm * gainTra * 255);
+                dataTra[idx + 2] = Math.min(255, bTra / norm * gainTra * 255);
+                dataTra[idx + 3] = 255;
+            }
+        }
+    }
+    reCtx.putImageData(imgDataRef, 0, 0);
+    trCtx.putImageData(imgDataTra, 0, 0);
+}
+const setupCanvas = document.getElementById("setupCanvas");
+const setupCtx = setupCanvas.getContext("2d");
+function drawSetup(){
+    const W=setupCanvas.width,H=setupCanvas.height;
+    setupCtx.clearRect(0,0,W,H);
+    setupCtx.fillStyle="#0a0f1c";
+    setupCtx.fillRect(0,0,W,H);
+    const lightCol = getLightColor();
+    const filmTop = H * 0.35;
+    const filmThick = state.d * 0.06;
+    const filmLeft = W*0.22;
+    const filmRight = W*0.58;
+    const filmBot = filmTop + filmThick;
+    setupCtx.fillStyle="rgba(0,180,255,0.14)";
+    setupCtx.fillRect(filmLeft, filmTop, filmRight-filmLeft, filmThick);
+    setupCtx.strokeStyle="#00e5ff";
+    setupCtx.lineWidth=2;
+    setupCtx.strokeRect(filmLeft, filmTop, filmRight-filmLeft, filmThick);
+    drawText(setupCtx,"薄膜 n="+state.n.toFixed(2),(filmLeft+filmRight)/2,filmTop-10,{font:"13px",align:"center"});
+    const srcX = filmLeft + 28;
+    const srcY = H * 0.07;
+    const gradLight = setupCtx.createRadialGradient(srcX,srcY,0,srcX,srcY,16);
+    gradLight.addColorStop(0,"#ffffff");
+    gradLight.addColorStop(1,"rgba(0,229,255,0.3)");
+    setupCtx.fillStyle = gradLight;
+    setupCtx.beginPath();
+    setupCtx.arc(srcX, srcY, 10, 0, Math.PI*2);
+    setupCtx.fill();
+    drawText(setupCtx,"点光源S",srcX,srcY-16,{font:"bold 16px",align:"center",bold:true});
+    const angleRad = state.angle * Math.PI / 180;
+    const sin0 = Math.sin(angleRad);
+    const cos0 = Math.cos(angleRad);
+    let hitX = srcX + sin0 * (filmTop - srcY);
+    hitX = Math.max(hitX, filmLeft + 10);
+    const hitY = filmTop;
+    drawArrow(setupCtx, srcX, srcY, hitX, hitY, lightCol);
+    const ref1X = hitX + sin0 * 130;
+    const ref1Y = hitY - cos0 * 130;
+    drawArrow(setupCtx, hitX, hitY, ref1X, ref1Y, lightCol);
+    const sin1 = sin0 / state.n;
+    const cos1 = Math.sqrt(1 - sin1*sin1);
+    const botHitX = hitX + sin1 * filmThick / cos1;
+    const botHitY = filmBot;
+    drawArrow(setupCtx, hitX, hitY, botHitX, botHitY, lightCol);
+    const outX = hitX + sin1 * filmThick / cos1 * 2;
+    const outY = filmTop;
+    drawArrow(setupCtx, botHitX, botHitY, outX, outY, lightCol);
+    const ref2X = outX + sin0 * 130;
+    const ref2Y = outY - cos0 * 130;
+    drawArrow(setupCtx, outX, outY, ref2X, ref2Y, lightCol);
+    drawArrow(setupCtx, botHitX, botHitY, botHitX + sin0*130, botHitY + cos0*130, lightCol);
+    const lensX = W*0.72;
+    const lensTop = H*0.10;
+    const lensBot = H*0.60;
+    setupCtx.strokeStyle="#7ef0ff";
+    setupCtx.lineWidth=3;
+    setupCtx.beginPath();
+    setupCtx.moveTo(lensX, lensTop);
+    setupCtx.quadraticCurveTo(lensX+22, (lensTop+lensBot)/2, lensX, lensBot);
+    setupCtx.stroke();
+    drawText(setupCtx,"会聚透镜",lensX+10,(lensTop+lensBot)/2,{font:"13px",align:"left"});
+    const focalX = W*0.84;
+    setupCtx.setLineDash([4,3]);
+    setupCtx.strokeStyle="rgba(0,229,255,0.5)";
+    setupCtx.lineWidth=2;
+    setupCtx.beginPath();
+    setupCtx.moveTo(focalX, lensTop);
+    setupCtx.lineTo(focalX, lensBot);
+    setupCtx.stroke();
+    setupCtx.setLineDash([]);
+    drawText(setupCtx,"焦平面（干涉环）",focalX+6,lensTop+20,{font:"13px",align:"left"});
+}
+function toggleAutoRun(){
+    const btn = document.getElementById("autoRunBtn");
+    if(autoRunning){
+        stopAutoAnim();
+        btn.classList.remove("pause");
+        btn.innerText = "▶ 开始自动变化";
+    }else{
+        startAutoAnim();
+        btn.classList.add("pause");
+        btn.innerText = "⏸ 暂停自动变化";
+    }
+}
+function stopAutoAnim(){
+    autoRunning = false;
+    if(autoTimer) clearInterval(autoTimer);
+    autoTimer = null;
+}
+function startAutoAnim(){
+    stopAutoAnim();
+    autoRunning = true;
+    const speedIdx = Number(document.getElementById("speedSlider").value);
+    const step = speedStep[speedIdx];
+    autoTimer = setInterval(()=>{
+        if(document.getElementById("autoLamCheck").checked && state.lightMode==="mono"){
+            state.lambda += lamDir * step;
+            if(state.lambda>=780) lamDir=-1;
+            if(state.lambda<=380) lamDir=1;
+            document.getElementById("sliderLam").value = state.lambda;
+            document.getElementById("numLam").value = state.lambda;
+        }
+        if(document.getElementById("autoDCheck").checked){
+            state.d += dDir * step;
+            if(state.d>=1200) dDir=-1;
+            if(state.d<=100) dDir=1;
+            document.getElementById("sliderD").value = state.d;
+            document.getElementById("numD").value = state.d;
+        }
+        if(document.getElementById("autoNCheck").checked){
+            state.n += NDir * step * 0.001;
+            if(state.n>=2.0) NDir=-1;
+            if(state.n<=1.0) NDir=1;
+            document.getElementById("sliderN").value = state.n;
+            document.getElementById("numN").value = state.n.toFixed(2);
+        }
+        if(document.getElementById("autoAngleCheck").checked){
+            state.angle += angDir * step * 0.8;
+            if(state.angle>=75) angDir=-1;
+            if(state.angle<=5) angDir=1;
+            document.getElementById("sliderAngle").value = state.angle;
+            document.getElementById("numAngle").value = state.angle;
+        }
+        refreshAll();
+    },30)
+}
+const modalMask = document.getElementById("modalMask");
+const modalTitleDom = document.getElementById("modalTitle");
+const modalContentDom = document.getElementById("modalContent");
+function closeModal(){modalMask.style.display = "none";}
+function openModal(type){
+    modalMask.style.display = "flex";
+    if(type === "principle"){
+        modalTitleDom.innerText = "等倾干涉实验原理";
+        modalContentDom.innerHTML = `
+        <table class="modal-table">
+            <tr><th>物理过程</th><th>说明</th></tr>
+            <tr><td>入射分束</td><td>点光源自上而下射到薄膜上表面，分成两束相干光</td></tr>
+            <tr><td>光束1</td><td>上表面直接向上反射，存在半波损失</td></tr>
+            <tr><td>光束2</td><td>折射进入薄膜→下表面反射→再次穿出上表面</td></tr>
+            <tr><td>光程差公式</td><td>δ = 2ndcosθ + λ/2</td></tr>
+        </table>
+        `;
+    }else if(type === "rule"){
+        modalTitleDom.innerText = "白光等倾干涉核心规律（区分牛顿环）";
+        modalContentDom.innerHTML = `
+        <table class="modal-table">
+            <tr><th>现象</th><th>规律描述</th></tr>
+            <tr><td>条纹分布</td><td>同心圆环，内疏外密</td></tr>
+            <tr><td>中心特征【关键区别牛顿环】</td><td>调整薄膜厚度d，中心可以亮纹、也可以暗纹；牛顿环反射图样中心永远暗斑</td></tr>
+            <tr><td>向外演化</td><td>入射角增大，干涉级降低；不同波长亮环逐步分离，形成连续彩色环带</td></tr>
+            <tr><td>边缘区域</td><td>各级光谱大量重叠，色彩自然融合渐变</td></tr>
+            <tr><td>反射&透射</td><td>条纹位置一致，光强、色彩严格互补</td></tr>
+        </table>
+        `;
+    }
+}
+window.onload = ()=> refreshAll();
+</script>
+</body>
+</html>
